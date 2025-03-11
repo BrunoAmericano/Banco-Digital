@@ -21,37 +21,50 @@ public abstract class Conta {
     }
 
     public void depositar(double valor) {
-        if (valor > 0) {
-            saldo += valor;
-            registrarTransacao("Depósito de R$ " + valor);
-        } else {
-            System.out.println("O valor do depósito precisa ser positivo.");
+        if (valor <= 0) {
+            System.out.println("Erro: O valor do depósito precisa ser maior que zero.");
+            return;
         }
+        saldo += valor;
+        registrarTransacao("Depósito de R$ " + valor);
     }
 
     public void sacar(double valor) {
-        if (saldo >= valor) {
-            saldo -= valor;
-            registrarTransacao("Saque de R$ " + valor);
-        } else {
-            System.out.println("Saldo insuficiente.");
+        if (valor <= 0) {
+            System.out.println("Erro: O valor do saque precisa ser maior que zero.");
+            return;
         }
+        if (saldo < valor) {
+            System.out.println("Erro: Saldo insuficiente.");
+            return;
+        }
+        saldo -= valor;
+        registrarTransacao("Saque de R$ " + valor);
     }
 
     public void transferir(double valor, Conta contaDestino) {
-        if (saldo >= valor) {
-            this.sacar(valor);
-            contaDestino.depositar(valor);
-            registrarTransacao("Transferência de R$ " + valor + " para conta " + contaDestino.numero);
-        } else {
-            System.out.println("Saldo insuficiente para transferência.");
+        if (valor <= 0) {
+            System.out.println("Erro: O valor da transferência precisa ser maior que zero.");
+            return;
         }
+        if (saldo < valor) {
+            System.out.println("Erro: Saldo insuficiente para transferência.");
+            return;
+        }
+        this.sacar(valor);
+        contaDestino.depositar(valor);
+        registrarTransacao("Transferência de R$ " + valor + " para conta " + contaDestino.numero);
     }
 
-    public void imprimirHistorico() {
-        System.out.println("=== Histórico de Transações ===");
-        for (String transacao : historicoTransacoes) {
-            System.out.println(transacao);
+    public void exportarHistoricoCsv() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("historico_conta_" + numero + ".csv"))) {
+            writer.write("Descrição\n");
+            for (String transacao : historicoTransacoes) {
+                writer.write(transacao + "\n");
+            }
+            System.out.println("Histórico exportado para CSV com sucesso!");
+        } catch (IOException e) {
+            System.out.println("Erro ao exportar histórico: " + e.getMessage());
         }
     }
 
@@ -67,16 +80,4 @@ public abstract class Conta {
     }
 
     public abstract void imprimirExtrato();
-
-    public void salvarHistoricoEmArquivo() {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("historico_conta_" + numero + ".txt"))) {
-            for (String transacao : historicoTransacoes) {
-                writer.write(transacao);
-                writer.newLine();
-            }
-            System.out.println("Histórico salvo no arquivo 'historico_conta_" + numero + ".txt'.");
-        } catch (IOException e) {
-            System.out.println("Erro ao salvar histórico: " + e.getMessage());
-        }
-    }
 }

@@ -8,10 +8,4 @@ public class ContaPoupanca extends Conta {
         System.out.println("=== Extrato Conta Poupança ===");
         imprimirInfosComuns();
     }
-
-    public void aplicarRendimentos(double taxaRendimento) {
-        double rendimento = saldo * taxaRendimento;
-        saldo += rendimento;
-        registrarTransacao("Rendimentos aplicados: R$ " + rendimento);
-    }
 }
