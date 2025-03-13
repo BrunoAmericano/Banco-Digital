@@ -1,24 +1,43 @@
-public class Cliente {
+import java.io.Serializable;
+
+public class Cliente implements Serializable {
     private String nome;
     private String senha;
+    private ContaCorrente contaCorrente;
+    private ContaPoupanca contaPoupanca;
 
     public Cliente(String nome, String senha) {
-        if (!validarSenhaForte(senha)) {
-            throw new IllegalArgumentException("A senha deve ter pelo menos 6 caracteres, incluindo letras e números.");
-        }
         this.nome = nome;
         this.senha = senha;
+        this.contaCorrente = new ContaCorrente();
+        this.contaPoupanca = new ContaPoupanca();
     }
 
     public String getNome() {
         return nome;
     }
 
-    public boolean autenticar(String senha) {
-        return this.senha.equals(senha);
+    public String getSenha() {
+        return senha;
     }
 
-    private boolean validarSenhaForte(String senha) {
-        return senha.length() >= 6 && senha.matches(".*[a-zA-Z].*") && senha.matches(".*\\d.*");
+    public void depositar(double valor) {
+        contaCorrente.depositar(valor);
+    }
+
+    public boolean sacar(double valor) {
+        return contaCorrente.sacar(valor);
+    }
+
+    public boolean transferir(double valor, int numeroContaDestino) {
+        return contaCorrente.transferir(valor, numeroContaDestino);
+    }
+
+    public void imprimirExtratoContaCorrente() {
+        contaCorrente.imprimirExtrato();
+    }
+
+    public void imprimirExtratoContaPoupanca() {
+        contaPoupanca.imprimirExtrato();
     }
 }
