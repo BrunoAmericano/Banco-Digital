@@ -1,1 +1,3 @@
-Cliente: , Senha: 
+Cliente: Bruno, Senha: B123456
+Conta Nº: 509981, Tipo: Conta Corrente, Saldo: 0.0
+Conta Nº: 784223, Tipo: Conta Poupança, Saldo: 0.0

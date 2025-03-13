@@ -1,12 +1,14 @@
 import java.io.Serializable;
 
 public abstract class Conta implements Serializable {
-    protected int numero;
-    protected double saldo;
+    private int numero;
+    private double saldo;
+    private Cliente cliente;
 
-    public Conta() {
-        this.numero = (int) (Math.random() * 1000000);
-        this.saldo = 0.0;
+    public Conta(Cliente cliente) {
+        this.cliente = cliente;
+        this.numero = (int)(Math.random() * (999999 - 100000) + 100000);  // Geração de número aleatório para a conta
+        this.saldo = 0;
     }
 
     public int getNumero() {
@@ -17,29 +19,27 @@ public abstract class Conta implements Serializable {
         return saldo;
     }
 
+    public Cliente getCliente() {
+        return cliente;
+    }
+
+    public void setNumero(int numero) {
+        this.numero = numero;
+    }
+
     public void depositar(double valor) {
-        saldo += valor;
+        if (valor > 0) {
+            this.saldo += valor;
+        }
     }
 
     public boolean sacar(double valor) {
-        if (valor <= saldo) {
-            saldo -= valor;
+        if (valor > 0 && valor <= saldo) {
+            this.saldo -= valor;
             return true;
         }
         return false;
     }
 
-    public void imprimirExtrato() {
-        System.out.println("Conta Nº: " + numero);
-        System.out.println("Saldo: " + saldo);
-    }
-
-    public boolean transferir(double valor, int numeroContaDestino) {
-        if (this.sacar(valor)) {
-            // Simula a transferência para outra conta, seria necessário melhorar para armazenar destinos
-            System.out.println("Transferência de " + valor + " para conta " + numeroContaDestino + " realizada.");
-            return true;
-        }
-        return false;
-    }
+    public abstract void imprimirExtrato();
 }

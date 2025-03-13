@@ -2,48 +2,172 @@ import java.io.*;
 import java.util.*;
 
 public class Banco {
-
     private static List<Cliente> clientes = new ArrayList<>();
-    private static final String ARQUIVO_CLIENTES = "clientes.dat";
+    private static List<Conta> contas = new ArrayList<>();
+    private static final String ARQUIVO_CLIENTES = "clientes.txt";
+    private static Cliente clienteLogado = null;
 
     public static void main(String[] args) {
+        carregarClientes();
         Scanner scanner = new Scanner(System.in);
-        carregarClientes(); // Carregar clientes do arquivo
 
         System.out.println("Bem-vindo ao Banco Digital!");
-        System.out.print("Você é um Cliente ou Administrador? ");
+        System.out.println("Você é um Cliente ou Administrador?");
+        System.out.print("Digite 'cliente' ou 'admin': ");
         String tipoUsuario = scanner.nextLine().toLowerCase();
 
-        Cliente cliente = null;
-        if (tipoUsuario.equals("cliente")) {
-            // Solicitar login do cliente
-            System.out.print("Digite seu nome: ");
-            String nome = scanner.nextLine();
-            System.out.print("Digite sua senha: ");
-            String senha = scanner.nextLine();
-
-            cliente = buscarCliente(nome, senha);
-
-            if (cliente == null) {
-                System.out.println("Cliente não encontrado ou senha incorreta.");
-                System.out.println("O administrador vai criar seu cadastro.");
-                cadastrarCliente(scanner);
-            }
-        }
-
-        // Exibindo o menu após autenticação
-        if (cliente != null) {
-            menuCliente(scanner, cliente);
+        if (tipoUsuario.equals("admin")) {
+            autenticarAdministrador(scanner);
+        } else if (tipoUsuario.equals("cliente")) {
+            loginCliente(scanner);
         } else {
-            // Caso o cliente tenha sido cadastrado com sucesso
-            System.out.println("Cadastro realizado com sucesso!");
-            salvarClientes(); // Salvar após cadastro
+            System.out.println("Opção inválida! Encerrando o sistema.");
         }
 
         scanner.close();
     }
 
-    private static void menuCliente(Scanner scanner, Cliente cliente) {
+    private static void autenticarAdministrador(Scanner scanner) {
+        System.out.print("Digite o nome de usuário do administrador: ");
+        String username = scanner.nextLine();
+
+        System.out.print("Digite a senha do administrador: ");
+        String password = scanner.nextLine();
+
+        if (username.equals("admin") && password.equals("123456")) {
+            menuAdministrador(scanner);
+        } else {
+            System.out.println("Autenticação falhou! Nome de usuário ou senha incorretos.");
+        }
+    }
+
+    private static void loginCliente(Scanner scanner) {
+        System.out.print("Digite seu nome: ");
+        String nome = scanner.nextLine();
+
+        System.out.print("Digite sua senha: ");
+        String senha = scanner.nextLine();
+
+        Cliente cliente = buscarCliente(nome, senha);
+
+        if (cliente != null) {
+            clienteLogado = cliente;
+            menuCliente(scanner);
+        } else {
+            System.out.println("Cliente não encontrado ou senha incorreta.");
+            System.out.println("O administrador vai criar seu cadastro.");
+            cadastrarCliente(scanner);
+        }
+    }
+
+    private static void cadastrarCliente(Scanner scanner) {
+        try {
+            System.out.print("Digite seu nome: ");
+            scanner.nextLine(); // Limpar o buffer
+            String nome = scanner.nextLine();
+
+            System.out.print("Digite uma senha forte: ");
+            String senha = scanner.nextLine();
+
+            Cliente cliente = new Cliente(nome, senha);
+            ContaCorrente contaCorrente = new ContaCorrente(cliente);
+            ContaPoupanca contaPoupanca = new ContaPoupanca(cliente);
+
+            clientes.add(cliente);
+            contas.add(contaCorrente);
+            contas.add(contaPoupanca);
+            salvarClientes();
+
+            System.out.println("Cadastro realizado com sucesso!");
+            System.out.println("Conta Corrente Nº: " + contaCorrente.getNumero());
+            System.out.println("Conta Poupança Nº: " + contaPoupanca.getNumero());
+        } catch (IllegalArgumentException e) {
+            System.out.println("Erro ao cadastrar cliente: " + e.getMessage());
+        }
+    }
+
+    private static Cliente buscarCliente(String nome, String senha) {
+        for (Cliente cliente : clientes) {
+            if (cliente.getNome().equals(nome) && cliente.getSenha().equals(senha)) {
+                return cliente;
+            }
+        }
+        return null;
+    }
+
+    private static void salvarClientes() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARQUIVO_CLIENTES))) {
+            for (Cliente cliente : clientes) {
+                writer.write("Cliente: " + cliente.getNome() + ", Senha: " + cliente.getSenha());
+                writer.newLine();
+                for (Conta conta : contas) {
+                    if (conta.getCliente().equals(cliente)) {
+                        writer.write("Conta Nº: " + conta.getNumero() + ", Tipo: " +
+                                (conta instanceof ContaCorrente ? "Conta Corrente" : "Conta Poupança") +
+                                ", Saldo: " + conta.getSaldo());
+                        writer.newLine();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Erro ao salvar clientes: " + e.getMessage());
+        }
+    }
+
+    private static void carregarClientes() {
+        try (BufferedReader reader = new BufferedReader(new FileReader(ARQUIVO_CLIENTES))) {
+            String linha;
+            while ((linha = reader.readLine()) != null) {
+                if (linha.startsWith("Cliente: ")) {
+                    String[] partes = linha.split(", ");
+                    String nome = partes[0].substring("Cliente: ".length());
+                    String senha = partes[1].substring("Senha: ".length());
+                    Cliente cliente = new Cliente(nome, senha);
+                    clientes.add(cliente);
+                } else if (linha.startsWith("Conta Nº: ")) {
+                    String[] partes = linha.split(", ");
+                    int numero = Integer.parseInt(partes[0].substring("Conta Nº: ".length()));
+                    String tipo = partes[1].substring("Tipo: ".length());
+                    double saldo = Double.parseDouble(partes[2].substring("Saldo: ".length()));
+                    Cliente cliente = clientes.get(clientes.size() - 1);
+                    Conta conta = tipo.equals("Conta Corrente") ? new ContaCorrente(cliente) : new ContaPoupanca(cliente);
+                    conta.setNumero(numero);
+                    conta.depositar(saldo);
+                    contas.add(conta);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Nenhum cliente salvo encontrado. Iniciando novo banco de dados.");
+        }
+    }
+
+    private static void menuAdministrador(Scanner scanner) {
+        int opcao;
+        do {
+            System.out.println("\n=== Menu Administrador ===");
+            System.out.println("1. Listar Clientes");
+            System.out.println("2. Gerar Relatório Gerencial");
+            System.out.println("0. Sair");
+            System.out.print("Escolha uma opção: ");
+            opcao = scanner.nextInt();
+
+            switch (opcao) {
+                case 1:
+                    listarClientes();
+                    break;
+                case 2:
+                    gerarRelatorioGerencial();
+                    break;
+                case 0:
+                    System.out.println("Saindo do sistema do Administrador.");
+                    break;
+                default:
+                    System.out.println("Opção inválida! Tente novamente.");
+            }
+        } while (opcao != 0);
+    }
+
+    private static void menuCliente(Scanner scanner) {
         int opcao;
         do {
             System.out.println("\n=== Menu Cliente ===");
@@ -58,102 +182,277 @@ public class Banco {
 
             switch (opcao) {
                 case 1:
-                    realizarDeposito(scanner, cliente);
+                    realizarDeposito(scanner);
                     break;
                 case 2:
-                    realizarSaque(scanner, cliente);
+                    realizarSaque(scanner);
                     break;
                 case 3:
-                    realizarTransferencia(scanner, cliente);
+                    realizarTransferencia(scanner);
                     break;
                 case 4:
-                    imprimirExtrato(scanner, cliente, true);
+                    imprimirExtrato(true);
                     break;
                 case 5:
-                    imprimirExtrato(scanner, cliente, false);
+                    imprimirExtrato(false);
                     break;
                 case 0:
                     System.out.println("Saindo do menu do Cliente.");
                     break;
                 default:
-                    System.out.println("Opção inválida.");
+                    System.out.println("Opção inválida! Tente novamente.");
             }
         } while (opcao != 0);
     }
 
-    private static Cliente buscarCliente(String nome, String senha) {
+    private static void listarClientes() {
+        System.out.println("\n=== Lista de Clientes ===");
         for (Cliente cliente : clientes) {
-            if (cliente.getNome().equals(nome) && cliente.getSenha().equals(senha)) {
-                return cliente;
+            System.out.println("Cliente: " + cliente.getNome());
+            for (Conta conta : contas) {
+                if (conta.getCliente().equals(cliente)) {
+                    System.out.println("  Conta Nº: " + conta.getNumero() +
+                            ", Tipo: " + (conta instanceof ContaCorrente ? "Conta Corrente" : "Conta Poupança"));
+                }
             }
         }
-        return null;
     }
 
-    private static void cadastrarCliente(Scanner scanner) {
-        System.out.print("Digite seu nome: ");
-        String nome = scanner.nextLine();
-        System.out.print("Digite uma senha forte: ");
-        String senha = scanner.nextLine();
-
-        Cliente novoCliente = new Cliente(nome, senha);
-        clientes.add(novoCliente);
-        System.out.println("Cadastro realizado com sucesso!");
-        salvarClientes(); // Salvar os dados de clientes ao cadastrar
-    }
-
-    private static void realizarDeposito(Scanner scanner, Cliente cliente) {
-        System.out.print("Digite o valor para depósito: ");
-        double valor = scanner.nextDouble();
-        cliente.depositar(valor);
-        System.out.println("Depósito realizado com sucesso!");
-    }
-
-    private static void realizarSaque(Scanner scanner, Cliente cliente) {
-        System.out.print("Digite o valor para saque: ");
-        double valor = scanner.nextDouble();
-        boolean sucesso = cliente.sacar(valor);
-        if (sucesso) {
-            System.out.println("Saque realizado com sucesso!");
-        } else {
-            System.out.println("Saldo insuficiente!");
+    private static void gerarRelatorioGerencial() {
+        System.out.println("\n=== Relatório Gerencial ===");
+        for (Conta conta : contas) {
+            System.out.println("Conta Nº: " + conta.getNumero() +
+                    ", Tipo: " + (conta instanceof ContaCorrente ? "Conta Corrente" : "Conta Poupança") +
+                    ", Saldo: " + conta.getSaldo());
         }
     }
 
-    private static void realizarTransferencia(Scanner scanner, Cliente cliente) {
-        System.out.print("Digite o número da conta de destino: ");
-        int numeroContaDestino = scanner.nextInt();
+    private static void realizarDeposito(Scanner scanner) {
+        System.out.print("Digite o valor do depósito: ");
+        double valor = scanner.nextDouble();
+
+        if (valor <= 0) {
+            System.out.println("Valor inválido para depósito.");
+            return;
+        }
+
+        System.out.println("Escolha a conta: 1. Corrente, 2. Poupança");
+        int tipoConta = scanner.nextInt();
+        Conta contaEscolhida = null;
+
+        // Procurar a conta correta do cliente logado
+        for (Conta conta : contas) {
+            if (conta.getCliente().equals(clienteLogado) && 
+                ((tipoConta == 1 && conta instanceof ContaCorrente) || 
+                 (tipoConta == 2 && conta instanceof ContaPoupanca))) {
+                contaEscolhida = conta;
+                break;
+            }
+        }
+
+        if (contaEscolhida != null) {
+            contaEscolhida.depositar(valor);
+            System.out.println("Depósito realizado com sucesso!");
+        } else {
+            System.out.println("Conta não encontrada.");
+        }
+    }
+
+    private static void realizarSaque(Scanner scanner) {
+        System.out.print("Digite o valor do saque: ");
+        double valor = scanner.nextDouble();
+
+        if (valor <= 0) {
+            System.out.println("Valor inválido para saque.");
+            return;
+        }
+
+        System.out.println("Escolha a conta: 1. Corrente, 2. Poupança");
+        int tipoConta = scanner.nextInt();
+        Conta contaEscolhida = null;
+
+        // Procurar a conta correta do cliente logado
+        for (Conta conta : contas) {
+            if (conta.getCliente().equals(clienteLogado) && 
+                ((tipoConta == 1 && conta instanceof ContaCorrente) || 
+                 (tipoConta == 2 && conta instanceof ContaPoupanca))) {
+                contaEscolhida = conta;
+                break;
+            }
+        }
+
+        if (contaEscolhida != null) {
+            if (contaEscolhida.sacar(valor)) {
+                System.out.println("Saque realizado com sucesso!");
+            } else {
+                System.out.println("Saldo insuficiente para saque.");
+            }
+        } else {
+            System.out.println("Conta não encontrada.");
+        }
+    }
+
+    private static void realizarTransferencia(Scanner scanner) {
         System.out.print("Digite o valor da transferência: ");
         double valor = scanner.nextDouble();
-        boolean sucesso = cliente.transferir(valor, numeroContaDestino);
-        if (sucesso) {
-            System.out.println("Transferência realizada com sucesso!");
+
+        if (valor <= 0) {
+            System.out.println("Valor inválido para transferência.");
+            return;
+        }
+
+        System.out.println("Escolha a conta origem: 1. Corrente, 2. Poupança");
+        int tipoContaOrigem = scanner.nextInt();
+
+        System.out.println("Escolha a conta destino: 1. Corrente, 2. Poupança");
+        int tipoContaDestino = scanner.nextInt();
+
+        Conta contaOrigem = null;
+        Conta contaDestino = null;
+
+        // Procurar a conta origem do cliente logado
+        for (Conta conta : contas) {
+            if (conta.getCliente().equals(clienteLogado) && 
+                ((tipoContaOrigem == 1 && conta instanceof ContaCorrente) || 
+                 (tipoContaOrigem == 2 && conta instanceof ContaPoupanca))) {
+                contaOrigem = conta;
+                break;
+            }
+        }
+
+        // Procurar a conta destino do cliente logado
+        for (Conta conta : contas) {
+            if (conta.getCliente().equals(clienteLogado) && 
+                ((tipoContaDestino == 1 && conta instanceof ContaCorrente) || 
+                 (tipoContaDestino == 2 && conta instanceof ContaPoupanca))) {
+                contaDestino = conta;
+                break;
+            }
+        }
+
+        if (contaOrigem != null && contaDestino != null) {
+            if (contaOrigem.sacar(valor)) {
+                contaDestino.depositar(valor);
+                System.out.println("Transferência realizada com sucesso!");
+            } else {
+                System.out.println("Saldo insuficiente para transferência.");
+            }
         } else {
-            System.out.println("Falha na transferência!");
+            System.out.println("Conta origem ou destino não encontrada.");
         }
     }
 
-    private static void imprimirExtrato(Scanner scanner, Cliente cliente, boolean corrente) {
-        if (corrente) {
-            cliente.imprimirExtratoContaCorrente();
+    private static void imprimirExtrato(boolean isCorrente) {
+        Conta contaEscolhida = null;
+
+        // Procurar a conta correta do cliente logado
+        for (Conta conta : contas) {
+            if (conta.getCliente().equals(clienteLogado) && 
+                ((isCorrente && conta instanceof ContaCorrente) || 
+                 (!isCorrente && conta instanceof ContaPoupanca))) {
+                contaEscolhida = conta;
+                break;
+            }
+        }
+
+        if (contaEscolhida != null) {
+            contaEscolhida.imprimirExtrato();
         } else {
-            cliente.imprimirExtratoContaPoupanca();
+            System.out.println("Conta não encontrada.");
+        }
+    }
+}
+
+// Classe Cliente
+public class Cliente {
+    private String nome;
+    private String senha;
+
+    public Cliente(String nome, String senha) {
+        this.nome = nome;
+        this.senha = senha;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getSenha() {
+        return senha;
+    }
+}
+
+// Classe abstrata Conta
+import java.io.Serializable;
+
+public abstract class Conta implements Serializable {
+    private int numero;
+    private double saldo;
+    private Cliente cliente;
+
+    public Conta(Cliente cliente) {
+        this.cliente = cliente;
+        this.numero = (int)(Math.random() * (999999 - 100000) + 100000);  // Geração de número aleatório para a conta
+        this.saldo = 0;
+    }
+
+    public int getNumero() {
+        return numero;
+    }
+
+    public double getSaldo() {
+        return saldo;
+    }
+
+    public Cliente getCliente() {
+        return cliente;
+    }
+
+    public void setNumero(int numero) {
+        this.numero = numero;
+    }
+
+    public void depositar(double valor) {
+        if (valor > 0) {
+            this.saldo += valor;
         }
     }
 
-    private static void carregarClientes() {
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ARQUIVO_CLIENTES))) {
-            clientes = (List<Cliente>) ois.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Nenhum cliente encontrado, criando um novo banco.");
+    public boolean sacar(double valor) {
+        if (valor > 0 && valor <= saldo) {
+            this.saldo -= valor;
+            return true;
         }
+        return false;
     }
 
-    private static void salvarClientes() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(ARQUIVO_CLIENTES))) {
-            oos.writeObject(clientes);
-        } catch (IOException e) {
-            System.out.println("Erro ao salvar os clientes.");
-        }
+    public abstract void imprimirExtrato();
+}
+
+// Classe ContaCorrente
+public class ContaCorrente extends Conta {
+    public ContaCorrente(Cliente cliente) {
+        super(cliente);
+    }
+
+    @Override
+    public void imprimirExtrato() {
+        System.out.println("Extrato Conta Corrente:");
+        System.out.println("Número: " + getNumero());
+        System.out.println("Saldo: " + getSaldo());
+    }
+}
+
+// Classe ContaPoupanca
+public class ContaPoupanca extends Conta {
+    public ContaPoupanca(Cliente cliente) {
+        super(cliente);
+    }
+
+    @Override
+    public void imprimirExtrato() {
+        System.out.println("Extrato Conta Poupança:");
+        System.out.println("Número: " + getNumero());
+        System.out.println("Saldo: " + getSaldo());
     }
 }
