@@ -1,89 +1,74 @@
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 
 public class Banco {
+    private static final String ARQUIVO_CLIENTES = "clientes.txt";
     private static List<Cliente> clientes = new ArrayList<>();
     private static List<Conta> contas = new ArrayList<>();
-    private static final String ARQUIVO_CLIENTES = "clientes.txt";
-    private static Cliente clienteLogado = null;
+    private static Cliente clienteLogado;
 
     public static void main(String[] args) {
         carregarClientes();
         Scanner scanner = new Scanner(System.in);
+        int opcao;
 
-        System.out.println("Bem-vindo ao Banco Digital!");
-        System.out.println("Você é um Cliente ou Administrador?");
-        System.out.print("Digite 'cliente' ou 'admin': ");
-        String tipoUsuario = scanner.nextLine().toLowerCase();
+        do {
+            System.out.println("=== Banco Digital ===");
+            System.out.println("1. Login");
+            System.out.println("2. Criar Conta");
+            System.out.println("3. Administrador");
+            System.out.println("0. Sair");
+            System.out.print("Escolha uma opção: ");
+            opcao = scanner.nextInt();
+            scanner.nextLine();
 
-        if (tipoUsuario.equals("admin")) {
-            autenticarAdministrador(scanner);
-        } else if (tipoUsuario.equals("cliente")) {
-            loginCliente(scanner);
-        } else {
-            System.out.println("Opção inválida! Encerrando o sistema.");
-        }
-
+            switch (opcao) {
+                case 1:
+                    login(scanner);
+                    break;
+                case 2:
+                    criarConta(scanner);
+                    break;
+                case 3:
+                    menuAdministrador(scanner);
+                    break;
+                case 0:
+                    salvarClientes();
+                    System.out.println("Saindo...");
+                    break;
+                default:
+                    System.out.println("Opção inválida! Tente novamente.");
+            }
+        } while (opcao != 0);
         scanner.close();
     }
 
-    private static void autenticarAdministrador(Scanner scanner) {
-        System.out.print("Digite o nome de usuário do administrador: ");
-        String username = scanner.nextLine();
-
-        System.out.print("Digite a senha do administrador: ");
-        String password = scanner.nextLine();
-
-        if (username.equals("admin") && password.equals("123456")) {
-            menuAdministrador(scanner);
-        } else {
-            System.out.println("Autenticação falhou! Nome de usuário ou senha incorretos.");
-        }
-    }
-
-    private static void loginCliente(Scanner scanner) {
-        System.out.print("Digite seu nome: ");
+    private static void login(Scanner scanner) {
+        System.out.print("Nome: ");
         String nome = scanner.nextLine();
-
-        System.out.print("Digite sua senha: ");
+        System.out.print("Senha: ");
         String senha = scanner.nextLine();
 
-        Cliente cliente = buscarCliente(nome, senha);
-
-        if (cliente != null) {
-            clienteLogado = cliente;
+        clienteLogado = buscarCliente(nome, senha);
+        if (clienteLogado != null) {
+            System.out.println("Login bem-sucedido!");
             menuCliente(scanner);
         } else {
-            System.out.println("Cliente não encontrado ou senha incorreta.");
-            System.out.println("O administrador vai criar seu cadastro.");
-            cadastrarCliente(scanner);
+            System.out.println("Nome ou senha incorretos!");
         }
     }
 
-    private static void cadastrarCliente(Scanner scanner) {
-        try {
-            System.out.print("Digite seu nome: ");
-            scanner.nextLine(); // Limpar o buffer
-            String nome = scanner.nextLine();
+    private static void criarConta(Scanner scanner) {
+        System.out.print("Nome: ");
+        String nome = scanner.nextLine();
+        System.out.print("Senha: ");
+        String senha = scanner.nextLine();
 
-            System.out.print("Digite uma senha forte: ");
-            String senha = scanner.nextLine();
-
-            Cliente cliente = new Cliente(nome, senha);
-            ContaCorrente contaCorrente = new ContaCorrente(cliente);
-            ContaPoupanca contaPoupanca = new ContaPoupanca(cliente);
-
-            clientes.add(cliente);
-            contas.add(contaCorrente);
-            contas.add(contaPoupanca);
-            salvarClientes();
-
-            System.out.println("Cadastro realizado com sucesso!");
-            System.out.println("Conta Corrente Nº: " + contaCorrente.getNumero());
-            System.out.println("Conta Poupança Nº: " + contaPoupanca.getNumero());
-        } catch (IllegalArgumentException e) {
-            System.out.println("Erro ao cadastrar cliente: " + e.getMessage());
-        }
+        Cliente novoCliente = new Cliente(nome, senha);
+        clientes.add(novoCliente);
+        System.out.println("Conta criada com sucesso!");
     }
 
     private static Cliente buscarCliente(String nome, String senha) {
@@ -167,6 +152,29 @@ public class Banco {
         } while (opcao != 0);
     }
 
+    private static void listarClientes() {
+        System.out.println("\n=== Lista de Clientes ===");
+        for (Cliente cliente : clientes) {
+            System.out.println("Cliente: " + cliente.getNome());
+            for (Conta conta : contas) {
+                if (conta.getCliente().equals(cliente)) {
+                    System.out.println("  Conta Nº: " + conta.getNumero() +
+                            ", Tipo: " + (conta instanceof ContaCorrente ? "Conta Corrente" : "Conta Poupança") +
+                            ", Saldo: " + conta.getSaldo());
+                }
+            }
+        }
+    }
+
+    private static void gerarRelatorioGerencial() {
+        System.out.println("\n=== Relatório Gerencial ===");
+        for (Conta conta : contas) {
+            System.out.println("Conta Nº: " + conta.getNumero() +
+                    ", Tipo: " + (conta instanceof ContaCorrente ? "Conta Corrente" : "Conta Poupança") +
+                    ", Saldo: " + conta.getSaldo());
+        }
+    }
+
     private static void menuCliente(Scanner scanner) {
         int opcao;
         do {
@@ -205,28 +213,6 @@ public class Banco {
         } while (opcao != 0);
     }
 
-    private static void listarClientes() {
-        System.out.println("\n=== Lista de Clientes ===");
-        for (Cliente cliente : clientes) {
-            System.out.println("Cliente: " + cliente.getNome());
-            for (Conta conta : contas) {
-                if (conta.getCliente().equals(cliente)) {
-                    System.out.println("  Conta Nº: " + conta.getNumero() +
-                            ", Tipo: " + (conta instanceof ContaCorrente ? "Conta Corrente" : "Conta Poupança"));
-                }
-            }
-        }
-    }
-
-    private static void gerarRelatorioGerencial() {
-        System.out.println("\n=== Relatório Gerencial ===");
-        for (Conta conta : contas) {
-            System.out.println("Conta Nº: " + conta.getNumero() +
-                    ", Tipo: " + (conta instanceof ContaCorrente ? "Conta Corrente" : "Conta Poupança") +
-                    ", Saldo: " + conta.getSaldo());
-        }
-    }
-
     private static void realizarDeposito(Scanner scanner) {
         System.out.print("Digite o valor do depósito: ");
         double valor = scanner.nextDouble();
@@ -242,8 +228,8 @@ public class Banco {
 
         // Procurar a conta correta do cliente logado
         for (Conta conta : contas) {
-            if (conta.getCliente().equals(clienteLogado) && 
-                ((tipoConta == 1 && conta instanceof ContaCorrente) || 
+            if (conta.getCliente().equals(clienteLogado) &&
+                ((tipoConta == 1 && conta instanceof ContaCorrente) ||
                  (tipoConta == 2 && conta instanceof ContaPoupanca))) {
                 contaEscolhida = conta;
                 break;
@@ -273,8 +259,8 @@ public class Banco {
 
         // Procurar a conta correta do cliente logado
         for (Conta conta : contas) {
-            if (conta.getCliente().equals(clienteLogado) && 
-                ((tipoConta == 1 && conta instanceof ContaCorrente) || 
+            if (conta.getCliente().equals(clienteLogado) &&
+                ((tipoConta == 1 && conta instanceof ContaCorrente) ||
                  (tipoConta == 2 && conta instanceof ContaPoupanca))) {
                 contaEscolhida = conta;
                 break;
@@ -312,8 +298,8 @@ public class Banco {
 
         // Procurar a conta origem do cliente logado
         for (Conta conta : contas) {
-            if (conta.getCliente().equals(clienteLogado) && 
-                ((tipoContaOrigem == 1 && conta instanceof ContaCorrente) || 
+            if (conta.getCliente().equals(clienteLogado) &&
+                ((tipoContaOrigem == 1 && conta instanceof ContaCorrente) ||
                  (tipoContaOrigem == 2 && conta instanceof ContaPoupanca))) {
                 contaOrigem = conta;
                 break;
@@ -322,8 +308,8 @@ public class Banco {
 
         // Procurar a conta destino do cliente logado
         for (Conta conta : contas) {
-            if (conta.getCliente().equals(clienteLogado) && 
-                ((tipoContaDestino == 1 && conta instanceof ContaCorrente) || 
+            if (conta.getCliente().equals(clienteLogado) &&
+                ((tipoContaDestino == 1 && conta instanceof ContaCorrente) ||
                  (tipoContaDestino == 2 && conta instanceof ContaPoupanca))) {
                 contaDestino = conta;
                 break;
@@ -338,121 +324,18 @@ public class Banco {
                 System.out.println("Saldo insuficiente para transferência.");
             }
         } else {
-            System.out.println("Conta origem ou destino não encontrada.");
-        }
-    }
-
-    private static void imprimirExtrato(boolean isCorrente) {
-        Conta contaEscolhida = null;
-
-        // Procurar a conta correta do cliente logado
-        for (Conta conta : contas) {
-            if (conta.getCliente().equals(clienteLogado) && 
-                ((isCorrente && conta instanceof ContaCorrente) || 
-                 (!isCorrente && conta instanceof ContaPoupanca))) {
-                contaEscolhida = conta;
-                break;
-            }
-        }
-
-        if (contaEscolhida != null) {
-            contaEscolhida.imprimirExtrato();
-        } else {
             System.out.println("Conta não encontrada.");
         }
     }
-}
 
-// Classe Cliente
-public class Cliente {
-    private String nome;
-    private String senha;
-
-    public Cliente(String nome, String senha) {
-        this.nome = nome;
-        this.senha = senha;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public String getSenha() {
-        return senha;
-    }
-}
-
-// Classe abstrata Conta
-import java.io.Serializable;
-
-public abstract class Conta implements Serializable {
-    private int numero;
-    private double saldo;
-    private Cliente cliente;
-
-    public Conta(Cliente cliente) {
-        this.cliente = cliente;
-        this.numero = (int)(Math.random() * (999999 - 100000) + 100000);  // Geração de número aleatório para a conta
-        this.saldo = 0;
-    }
-
-    public int getNumero() {
-        return numero;
-    }
-
-    public double getSaldo() {
-        return saldo;
-    }
-
-    public Cliente getCliente() {
-        return cliente;
-    }
-
-    public void setNumero(int numero) {
-        this.numero = numero;
-    }
-
-    public void depositar(double valor) {
-        if (valor > 0) {
-            this.saldo += valor;
+    private static void imprimirExtrato(boolean corrente) {
+        System.out.println("\n=== Extrato " + (corrente ? "Corrente" : "Poupança") + " ===");
+        for (Conta conta : contas) {
+            if (conta.getCliente().equals(clienteLogado) &&
+                ((corrente && conta instanceof ContaCorrente) ||
+                 (!corrente && conta instanceof ContaPoupanca))) {
+                System.out.println("Conta Nº: " + conta.getNumero() + ", Saldo: " + conta.getSaldo());
+            }
         }
-    }
-
-    public boolean sacar(double valor) {
-        if (valor > 0 && valor <= saldo) {
-            this.saldo -= valor;
-            return true;
-        }
-        return false;
-    }
-
-    public abstract void imprimirExtrato();
-}
-
-// Classe ContaCorrente
-public class ContaCorrente extends Conta {
-    public ContaCorrente(Cliente cliente) {
-        super(cliente);
-    }
-
-    @Override
-    public void imprimirExtrato() {
-        System.out.println("Extrato Conta Corrente:");
-        System.out.println("Número: " + getNumero());
-        System.out.println("Saldo: " + getSaldo());
-    }
-}
-
-// Classe ContaPoupanca
-public class ContaPoupanca extends Conta {
-    public ContaPoupanca(Cliente cliente) {
-        super(cliente);
-    }
-
-    @Override
-    public void imprimirExtrato() {
-        System.out.println("Extrato Conta Poupança:");
-        System.out.println("Número: " + getNumero());
-        System.out.println("Saldo: " + getSaldo());
     }
 }
